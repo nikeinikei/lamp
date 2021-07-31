@@ -306,6 +306,10 @@ public:
 		}
 	}
 
+	void save(const char* path) {
+		mod.save(path);
+	}
+
 private:
 	torch::jit::script::Module mod;
 	std::unique_ptr<torch::optim::Adam> opt;
@@ -364,6 +368,14 @@ static int w_module_step(lua_State* L) {
 	return 1;
 }
 
+static int w_module_save(lua_State* L) {
+	ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+	const char* path = luaL_checkstring(L, 2);
+	self->save(path);
+
+	return 1;
+}
+
 struct luaL_Reg module_functions[] = {
 	{ "cuda", w_module_cuda },
 	{ "cpu", w_module_cpu },
@@ -371,6 +383,7 @@ struct luaL_Reg module_functions[] = {
 	{ "forward", w_module_forward },
 	{ "zeroGrad", w_module_zeroGrad },
 	{ "step", w_module_step },
+	{ "save", w_module_save },
 	{ 0, 0 }
 };
 
