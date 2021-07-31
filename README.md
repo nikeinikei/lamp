@@ -1,21 +1,23 @@
 # what is this project about?
 
-This is a lua library written in c++ that lets you load and call TorchScript models. It's kept in mind for the use with the LÖVE engine to explore computer vision techniques in games.
+This is a lua library written in c++ that lets you load and call TorchScript models. 
+It's kept in mind for the use with the LÖVE engine to explore computer vision and machine learning techniques in games.
 
 # How to build?
 
-I can only tell you how to do it on windows, if you're on linux or mac you'll have to figure it out yourself
+These instructions are only valid for Windows. If you're on Linux or Mac you'll have to figure it out yourself.
 
 Prerequisites:
-- Luajit (already compiled)
+- Python + PyTorch installation
+- Luajit (compiled, after running the msvcbuild.bat file)
 - libtorch
 
 ```bash
 cd build
 cmake -G "Visual Studio 16 2019" -A x64 -DLUAJIT_PATH=/path/to/luajit -DCMAKE_PREFIX_PATH=/path/to/libtorch ..
-cmake --build . --config Release
 ```
 
+Now open the generated lamp.sln file and build it in Visual Studio.
 The compiled `lamp.dll` will be found in the `Release` folder.
 
 # How to use?
