@@ -1,5 +1,6 @@
 #include "lua.hpp"
 #include "torch/script.h"
+#include "torch/optim.h"
 
 #include <atomic>
 #include <cstring>
@@ -187,9 +188,20 @@ public:
 		return tensor.item<double>();
 	}
 
+	void backward() {
+		tensor.backward();
+	}
+
 private:
 	at::Tensor tensor;
 };
+
+static int w_tensor_backward(lua_State* L) {
+	TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+	self->backward();
+
+	return 1;
+}
 
 static int w_tensor_item(lua_State* L) {
 	TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
@@ -228,6 +240,7 @@ static int w_tensor_toDevice(lua_State* L) {
 }
 
 struct luaL_Reg tensor_functions[] = {
+	{ "backward", w_tensor_backward },
 	{ "cuda", w_tensor_cuda },
 	{ "cpu", w_tensor_cpu },
 	{ "toDevice", w_tensor_toDevice },
@@ -242,6 +255,11 @@ public:
 	ModuleWrapper(const char* path) {
 		try {
 			mod = torch::jit::load(path);
+			std::vector<at::Tensor> parameters;
+			for (auto& param : mod.parameters()) {
+				parameters.push_back(param);
+			}
+			opt = std::make_unique<torch::optim::Adam>(parameters);
 		}
 		catch (c10::Error e) {
 			throw std::exception(e.what());
@@ -277,8 +295,20 @@ public:
 		}
 	}
 
+	void zeroGrad() {
+		opt->zero_grad();
+	}
+
+	void step(double learningRate) {
+		torch::NoGradGuard no_grad;
+		for (auto& param : mod.parameters()) {
+			param.subtract_(param.grad(), learningRate);
+		}
+	}
+
 private:
 	torch::jit::script::Module mod;
+	std::unique_ptr<torch::optim::Adam> opt;
 };
 
 static int w_module_forward(lua_State* L) {
@@ -319,11 +349,28 @@ static int w_module_toDevice(lua_State* L) {
 	return 1;
 }
 
+static int w_module_zeroGrad(lua_State* L) {
+	ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+	luax_catchexcept(L, [&]() { self->zeroGrad(); }); 
+
+	return 1;
+}
+
+static int w_module_step(lua_State* L) {
+	ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+	double learningRate = luaL_checknumber(L, 2);
+	self->step(learningRate);
+
+	return 1;
+}
+
 struct luaL_Reg module_functions[] = {
 	{ "cuda", w_module_cuda },
 	{ "cpu", w_module_cpu },
 	{ "toDevice", w_module_toDevice },
 	{ "forward", w_module_forward },
+	{ "zeroGrad", w_module_zeroGrad },
+	{ "step", w_module_step },
 	{ 0, 0 }
 };
 
