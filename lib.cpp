@@ -159,6 +159,18 @@ public:
 		tensor = t;
 	}
 
+	TensorWrapper* toDevice(const char* identifier) const {
+		return new TensorWrapper(tensor.to(c10::Device(identifier)));
+	}
+
+	TensorWrapper* cpu() {
+		return new TensorWrapper(tensor.to(c10::Device(c10::DeviceType::CPU, 0)));
+	}
+
+	TensorWrapper* cuda() {
+		return new TensorWrapper(tensor.to(c10::Device(c10::DeviceType::CUDA, -1)));
+	}
+
 	const at::Tensor& getTensor() const {
 		return tensor;
 	}
@@ -187,7 +199,38 @@ static int w_tensor_item(lua_State* L) {
 	return 1;
 }
 
+static int w_tensor_cuda(lua_State* L) {
+	TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+	TensorWrapper* newTensor = self->cuda();
+	luax_pushtype(L, newTensor);
+	newTensor->release();
+
+	return 1;
+}
+
+static int w_tensor_cpu(lua_State* L) {
+	TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+	TensorWrapper* newTensor = self->cpu();
+	luax_pushtype(L, newTensor);
+	newTensor->release();
+
+	return 1;
+}
+
+static int w_tensor_toDevice(lua_State* L) {
+	TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+	const char* deviceIdentifier = luaL_checkstring(L, 2);
+	TensorWrapper* newTensor = self->toDevice(deviceIdentifier);
+	luax_pushtype(L, newTensor);
+	newTensor->release();
+
+	return 1;
+}
+
 struct luaL_Reg tensor_functions[] = {
+	{ "cuda", w_tensor_cuda },
+	{ "cpu", w_tensor_cpu },
+	{ "toDevice", w_tensor_toDevice },
 	{ "item", w_tensor_item },
 	{ 0, 0 }
 };
@@ -203,6 +246,18 @@ public:
 		catch (c10::Error e) {
 			throw std::exception(e.what());
 		}
+	}
+
+	void cuda() {
+		mod.to(c10::Device(c10::DeviceType::CUDA, -1));
+	}
+
+	void cpu() {
+		mod.to(c10::Device(c10::DeviceType::CPU, 0));
+	}
+
+	void toDevice(const char* deviceIdentifier) {
+		mod.to(c10::Device(deviceIdentifier));
 	}
 
 	const char* getName() override {
@@ -242,7 +297,32 @@ static int w_module_forward(lua_State* L) {
 	return 1;
 }
 
+static int w_module_cuda(lua_State* L) {
+	ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+	self->cuda();
+
+	return 1;
+}
+
+static int w_module_cpu(lua_State* L) {
+	ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+	self->cpu();
+
+	return 1;
+}
+
+static int w_module_toDevice(lua_State* L) {
+	ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+	const char* deviceIdentifier = luaL_checkstring(L, 2);
+	self->toDevice(deviceIdentifier);
+
+	return 1;
+}
+
 struct luaL_Reg module_functions[] = {
+	{ "cuda", w_module_cuda },
+	{ "cpu", w_module_cpu },
+	{ "toDevice", w_module_toDevice },
 	{ "forward", w_module_forward },
 	{ 0, 0 }
 };
