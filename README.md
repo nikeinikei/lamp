@@ -1,16 +1,17 @@
 # what is this project about?
 
 This is a lua library written in c++ that lets you load and call TorchScript models. 
-It's kept in mind for the use with the LÖVE engine to explore computer vision and machine learning techniques in games.
+It's kept in mind for the use with the [LÖVE](https://love2d.org/) engine to explore computer vision and machine learning techniques in games.
 
 # How to build?
 
 These instructions are only valid for Windows. If you're on Linux or Mac you'll have to figure it out yourself.
 
 Prerequisites:
-- Python + PyTorch installation
-- Luajit (compiled, after running the msvcbuild.bat file)
-- libtorch
+- [Python](https://www.python.org/)
+- [Luajit](https://github.com/LuaJIT/LuaJIT) (compiled, after running the msvcbuild.bat file)
+- [PyTorch + LibTorch (C++ library, Release Version)](https://pytorch.org/get-started/locally/)
+- Depending on the chosen LibTorch version you may also have to install [CUDA](https://developer.nvidia.com/cuda-zone) and [cudnn](https://developer.nvidia.com/cudnn)
 
 ```bash
 cd build
