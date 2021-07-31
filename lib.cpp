@@ -310,7 +310,12 @@ public:
 
     TensorWrapper* forward(std::vector<c10::IValue> inputs) {
         try {
-            return new TensorWrapper(mod.forward(inputs).toTensor());
+            auto out = mod.forward(inputs);
+            if (out.isNone()) {
+                return nullptr;
+            } else {
+                return new TensorWrapper(out.toTensor());
+            }
         }
         catch (c10::Error err) {
             throw std::exception(err.what());
@@ -347,8 +352,10 @@ static int w_module_forward(lua_State* L) {
     }
     TensorWrapper* newTensor;
     luax_catchexcept(L, [&]() { newTensor = self->forward(values); });
-    luax_pushtype(L, newTensor);
-    newTensor->release();
+    if (newTensor != nullptr) {
+        luax_pushtype(L, newTensor);
+        newTensor->release();
+    }
 
     return 1;
 }
@@ -406,6 +413,7 @@ struct luaL_Reg module_functions[] = {
     { "zeroGrad", w_module_zeroGrad },
     { "step", w_module_step },
     { "save", w_module_save },
+    { "__call", w_module_forward },
     { 0, 0 }
 };
 
