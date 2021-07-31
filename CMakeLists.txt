@@ -8,6 +8,6 @@ if(NOT LUAJIT_PATH)
 endif()
 
 add_library(lamp SHARED lib.cpp)
-target_include_directories(lamp ${LUAJIT_PATH}/src)
-target_link_libraries(lamp ${TORCH_LIBRARIES} ${LUAJIT_PATH}/src/lua51)
+target_include_directories(lamp PRIVATE ${LUAJIT_PATH}/src)
+target_link_libraries(lamp ${TORCH_LIBRARIES} ${LUAJIT_PATH}/src/lua51.lib)
 set_property(TARGET lamp PROPERTY CXX_STANDARD 14)
