@@ -117,11 +117,21 @@ static void luax_pushtype(lua_State* L, Object* obj) {
     lua_setmetatable(L, -2);
 }
 
+static void charArrayDeleter(void* data) {
+    char* x = (char*) data;
+    delete x;
+}
+
+static void doubleArrayDeleter(void* data) {
+    double* x = (double*) data;
+    delete x;
+}
+
 class TensorWrapper : public Object {
 public:
     constexpr static const char* name = "lamp.Tensor";
 
-    TensorWrapper(void* data, int width, int height, const char* format) {
+    TensorWrapper(void* data, size_t numBytes, int width, int height, const char* format) {
         int64_t numComponents = 0;
         at::TensorOptions options;
         if (strcmp(format, "rgba32f") == 0) {
@@ -149,11 +159,19 @@ public:
             numComponents = 1;
         }
         if (numComponents > 0) {
-            tensor = torch::from_blob(data, { width, height, numComponents }, options);
+            char* copy = new char[numBytes];
+            std::memcpy(copy, data, numBytes);
+            tensor = torch::from_blob(copy, { width, height, numComponents }, charArrayDeleter, options);
         }
         else {
             throw std::exception("unsupported format");
         }
+    }
+
+    TensorWrapper(double* values, size_t numValues) {
+        at::TensorOptions options;
+        options = options.dtype(torch::kDouble);
+        tensor = torch::from_blob(values, { (int64_t) numValues, 1 }, doubleArrayDeleter, options);
     }
 
     TensorWrapper(const at::Tensor& t) {
@@ -398,14 +416,33 @@ int w_newModule(lua_State* L) {
 }
 
 static int w_newTensor(lua_State* L) {
-    void* data = lua_touserdata(L, 1);
-    lua_Number width = luaL_checknumber(L, 2);
-    lua_Number height = luaL_checknumber(L, 3);
-    const char* format = luaL_checkstring(L, 4);
-    TensorWrapper* tensorWrapper;
-    luax_catchexcept(L, [&](){ tensorWrapper = new TensorWrapper(data, (int)width, (int)height, format); });
-    luax_pushtype(L, tensorWrapper);
-    tensorWrapper->release();
+    if (lua_istable(L, 1)) {
+        if (lua_gettop(L) > 1) {
+            return luaL_argerror(L, 2, "expected just 1 argument, got 2 or more arguments");
+        }
+        size_t len = lua_objlen(L, 1);
+        double* values = new double[len];
+        for (size_t i = 1; i <= len; i++) {
+            lua_pushnumber(L, (double) i);
+            lua_gettable(L, 1);
+            double value = luaL_checknumber(L, -1);
+            lua_pop(L, 1);
+            values[i - 1] = value;
+        }
+        TensorWrapper* tensorWrapper = new TensorWrapper(values, len);
+        luax_pushtype(L, tensorWrapper);
+        tensorWrapper->release();
+    } else {
+        void* data = lua_touserdata(L, 1);
+        lua_Number numBytes = luaL_checknumber(L, 2);
+        lua_Number width = luaL_checknumber(L, 3);
+        lua_Number height = luaL_checknumber(L, 4);
+        const char* format = luaL_checkstring(L, 5);
+        TensorWrapper* tensorWrapper;
+        luax_catchexcept(L, [&](){ tensorWrapper = new TensorWrapper(data, (size_t) numBytes, (int)width, (int)height, format); });
+        luax_pushtype(L, tensorWrapper);
+        tensorWrapper->release();
+    }
 
     return 1;
 }
