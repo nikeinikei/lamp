@@ -122,8 +122,8 @@ static void charArrayDeleter(void* data) {
     delete x;
 }
 
-static void doubleArrayDeleter(void* data) {
-    double* x = (double*) data;
+static void floatArrayDeleter(void* data) {
+    float* x = (float*) data;
     delete x;
 }
 
@@ -168,10 +168,10 @@ public:
         }
     }
 
-    TensorWrapper(double* values, size_t numValues) {
+    TensorWrapper(float* values, size_t numValues) {
         at::TensorOptions options;
-        options = options.dtype(torch::kDouble);
-        tensor = torch::from_blob(values, { (int64_t) numValues, 1 }, doubleArrayDeleter, options);
+        options = options.dtype(torch::kFloat);
+        tensor = torch::from_blob(values, { (int64_t) numValues }, floatArrayDeleter, options);
     }
 
     TensorWrapper(const at::Tensor& t) {
@@ -207,7 +207,11 @@ public:
     }
 
     void backward() {
-        tensor.backward();
+        try {
+            tensor.backward();
+        } catch(c10::Error& err) {
+            throw std::exception(err.what());
+        }
     }
 
 private:
@@ -216,7 +220,7 @@ private:
 
 static int w_tensor_backward(lua_State* L) {
     TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
-    self->backward();
+    luax_catchexcept(L, [&]() { self->backward(); });
 
     return 1;
 }
@@ -421,13 +425,13 @@ static int w_newTensor(lua_State* L) {
             return luaL_argerror(L, 2, "expected just 1 argument, got 2 or more arguments");
         }
         size_t len = lua_objlen(L, 1);
-        double* values = new double[len];
+        float* values = new float[len];
         for (size_t i = 1; i <= len; i++) {
             lua_pushnumber(L, (double) i);
             lua_gettable(L, 1);
             double value = luaL_checknumber(L, -1);
             lua_pop(L, 1);
-            values[i - 1] = value;
+            values[i - 1] = (float) value;
         }
         TensorWrapper* tensorWrapper = new TensorWrapper(values, len);
         luax_pushtype(L, tensorWrapper);
