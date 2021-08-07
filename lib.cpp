@@ -218,15 +218,19 @@ private:
     at::Tensor tensor;
 };
 
+static TensorWrapper* luax_checktensor(lua_State* L, int idx) {
+    return luax_checktype<TensorWrapper>(L, idx, ObjectType::TENSOR);
+}
+
 static int w_tensor_backward(lua_State* L) {
-    TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+    TensorWrapper* self = luax_checktensor(L, 1);
     luax_catchexcept(L, [&]() { self->backward(); });
 
     return 1;
 }
 
 static int w_tensor_item(lua_State* L) {
-    TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+    TensorWrapper* self = luax_checktensor(L, 1);
     double value = self->item();
     lua_pushnumber(L, value);
 
@@ -234,7 +238,7 @@ static int w_tensor_item(lua_State* L) {
 }
 
 static int w_tensor_cuda(lua_State* L) {
-    TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+    TensorWrapper* self = luax_checktensor(L, 1);
     TensorWrapper* newTensor = self->cuda();
     luax_pushtype(L, newTensor);
     newTensor->release();
@@ -243,7 +247,7 @@ static int w_tensor_cuda(lua_State* L) {
 }
 
 static int w_tensor_cpu(lua_State* L) {
-    TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+    TensorWrapper* self = luax_checktensor(L, 1);
     TensorWrapper* newTensor = self->cpu();
     luax_pushtype(L, newTensor);
     newTensor->release();
@@ -252,7 +256,7 @@ static int w_tensor_cpu(lua_State* L) {
 }
 
 static int w_tensor_toDevice(lua_State* L) {
-    TensorWrapper* self = luax_checktype<TensorWrapper>(L, 1, ObjectType::TENSOR);
+    TensorWrapper* self = luax_checktensor(L, 1);
     const char* deviceIdentifier = luaL_checkstring(L, 2);
     TensorWrapper* newTensor = self->toDevice(deviceIdentifier);
     luax_pushtype(L, newTensor);
@@ -342,8 +346,12 @@ private:
     std::unique_ptr<torch::optim::Adam> opt;
 };
 
+static ModuleWrapper* luax_checkmodule(lua_State* L, int idx) {
+    return luax_checktype<ModuleWrapper>(L, idx, ObjectType::MODULE);
+}
+
 static int w_module_forward(lua_State* L) {
-    ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+    ModuleWrapper* self = luax_checkmodule(L, 1);
     int numArgs = lua_gettop(L);
     std::vector<c10::IValue> values;
     for (int i = 2; i <= numArgs; i++) {
@@ -361,21 +369,21 @@ static int w_module_forward(lua_State* L) {
 }
 
 static int w_module_cuda(lua_State* L) {
-    ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+    ModuleWrapper* self = luax_checkmodule(L, 1);
     self->cuda();
 
     return 1;
 }
 
 static int w_module_cpu(lua_State* L) {
-    ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+    ModuleWrapper* self = luax_checkmodule(L, 1);
     self->cpu();
 
     return 1;
 }
 
 static int w_module_toDevice(lua_State* L) {
-    ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+    ModuleWrapper* self = luax_checkmodule(L, 1);
     const char* deviceIdentifier = luaL_checkstring(L, 2);
     self->toDevice(deviceIdentifier);
 
@@ -383,14 +391,14 @@ static int w_module_toDevice(lua_State* L) {
 }
 
 static int w_module_zeroGrad(lua_State* L) {
-    ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+    ModuleWrapper* self = luax_checkmodule(L, 1);
     luax_catchexcept(L, [&]() { self->zeroGrad(); }); 
 
     return 1;
 }
 
 static int w_module_step(lua_State* L) {
-    ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+    ModuleWrapper* self = luax_checkmodule(L, 1);
     double learningRate = luaL_checknumber(L, 2);
     self->step(learningRate);
 
@@ -398,7 +406,7 @@ static int w_module_step(lua_State* L) {
 }
 
 static int w_module_save(lua_State* L) {
-    ModuleWrapper* self = luax_checktype<ModuleWrapper>(L, 1, ObjectType::MODULE);
+    ModuleWrapper* self = luax_checkmodule(L, 1);
     const char* path = luaL_checkstring(L, 2);
     self->save(path);
 
