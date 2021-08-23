@@ -12,18 +12,13 @@
 enum class ObjectType {
     MODULE,
     TENSOR,
-    UNKNOWN,
 };
 
 class Object {
 public:
-    virtual const char* getName() {
-        return "lamp.Object";
-    }
+    virtual const char* getName() = 0;
 
-    virtual ObjectType getType() {
-        return ObjectType::UNKNOWN;
-    }
+    virtual ObjectType getType() = 0;
 
     void retain() {
         count.fetch_add(1, std::memory_order_relaxed);
@@ -74,8 +69,27 @@ static int w__gc(lua_State* L) {
     return 0;
 }
 
+static const char* typeAsString(ObjectType type) {
+    switch (type) {
+        case ObjectType::MODULE:
+            return "Module";
+        case ObjectType::TENSOR:
+            return "Tensor";
+        default:
+            return "unknown";
+    }
+}
+
+static int w_type(lua_State* L) {
+    Proxy* p = (Proxy*) lua_touserdata(L, 1);
+    lua_pushstring(L, typeAsString(p->type));
+
+    return 1;
+}
+
 static luaL_Reg base_methods[] = {
     { "__gc", w__gc },
+    { "type", w_type },
     { 0, 0 }
 };
 
@@ -126,6 +140,14 @@ static void floatArrayDeleter(void* data) {
     float* x = (float*) data;
     delete x;
 }
+
+struct Data {
+    void* ptr;
+    size_t size;
+
+    Data(void* ptr, size_t size) 
+        : ptr(ptr), size(size) {}
+};
 
 class TensorWrapper : public Object {
 public:
@@ -214,6 +236,10 @@ public:
         }
     }
 
+    Data data() {
+        return Data(tensor.data_ptr(), tensor.nbytes());
+    }
+
 private:
     at::Tensor tensor;
 };
@@ -261,6 +287,14 @@ static int w_tensor_toDevice(lua_State* L) {
     TensorWrapper* newTensor = self->toDevice(deviceIdentifier);
     luax_pushtype(L, newTensor);
     newTensor->release();
+
+    return 1;
+}
+
+static int w_tensor_data(lua_State* L) {
+    TensorWrapper* self = luax_checktensor(L, 1);
+    auto data = self->data();
+    lua_pushlstring(L, (const char*) data.ptr, data.size);
 
     return 1;
 }
@@ -355,7 +389,7 @@ static int w_module_forward(lua_State* L) {
     int numArgs = lua_gettop(L);
     std::vector<c10::IValue> values;
     for (int i = 2; i <= numArgs; i++) {
-        TensorWrapper* tw = luax_checktype<TensorWrapper>(L, i, ObjectType::TENSOR);
+        TensorWrapper* tw = luax_checktensor(L, i);
         values.push_back(tw->getTensor());
     }
     TensorWrapper* newTensor;
