@@ -305,6 +305,7 @@ struct luaL_Reg tensor_functions[] = {
     { "cpu", w_tensor_cpu },
     { "toDevice", w_tensor_toDevice },
     { "item", w_tensor_item },
+    { "data", w_tensor_data },
     { 0, 0 }
 };
 
@@ -389,7 +390,9 @@ static int w_module_forward(lua_State* L) {
     int numArgs = lua_gettop(L);
     std::vector<c10::IValue> values;
     for (int i = 2; i <= numArgs; i++) {
-        if (lua_isnumber(L, i)) {
+        if (lua_isnil(L, i)) {
+            luaL_error(L, "cannot pass nil to Model::forward");
+        } else if (lua_isnumber(L, i)) {
             values.push_back((double) lua_tonumber(L, i));
         } else if (lua_isboolean(L, i)) {
             values.push_back((bool) lua_toboolean(L, i));
