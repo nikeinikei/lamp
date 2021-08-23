@@ -252,7 +252,7 @@ static int w_tensor_backward(lua_State* L) {
     TensorWrapper* self = luax_checktensor(L, 1);
     luax_catchexcept(L, [&]() { self->backward(); });
 
-    return 1;
+    return 0;
 }
 
 static int w_tensor_item(lua_State* L) {
@@ -389,8 +389,14 @@ static int w_module_forward(lua_State* L) {
     int numArgs = lua_gettop(L);
     std::vector<c10::IValue> values;
     for (int i = 2; i <= numArgs; i++) {
-        TensorWrapper* tw = luax_checktensor(L, i);
-        values.push_back(tw->getTensor());
+        if (lua_isnumber(L, i)) {
+            values.push_back((double) lua_tonumber(L, i));
+        } else if (lua_isboolean(L, i)) {
+            values.push_back((bool) lua_toboolean(L, i));
+        } else {
+            TensorWrapper* tw = luax_checktensor(L, i);
+            values.push_back(tw->getTensor());
+        }
     }
     TensorWrapper* newTensor;
     luax_catchexcept(L, [&]() { newTensor = self->forward(values); });
@@ -406,14 +412,14 @@ static int w_module_cuda(lua_State* L) {
     ModuleWrapper* self = luax_checkmodule(L, 1);
     self->cuda();
 
-    return 1;
+    return 0;
 }
 
 static int w_module_cpu(lua_State* L) {
     ModuleWrapper* self = luax_checkmodule(L, 1);
     self->cpu();
 
-    return 1;
+    return 0;
 }
 
 static int w_module_toDevice(lua_State* L) {
@@ -421,14 +427,14 @@ static int w_module_toDevice(lua_State* L) {
     const char* deviceIdentifier = luaL_checkstring(L, 2);
     self->toDevice(deviceIdentifier);
 
-    return 1;
+    return 0;
 }
 
 static int w_module_zeroGrad(lua_State* L) {
     ModuleWrapper* self = luax_checkmodule(L, 1);
     luax_catchexcept(L, [&]() { self->zeroGrad(); }); 
 
-    return 1;
+    return 0;
 }
 
 static int w_module_step(lua_State* L) {
@@ -436,7 +442,7 @@ static int w_module_step(lua_State* L) {
     double learningRate = luaL_checknumber(L, 2);
     self->step(learningRate);
 
-    return 1;
+    return 0;
 }
 
 static int w_module_save(lua_State* L) {
@@ -444,7 +450,7 @@ static int w_module_save(lua_State* L) {
     const char* path = luaL_checkstring(L, 2);
     self->save(path);
 
-    return 1;
+    return 0;
 }
 
 struct luaL_Reg module_functions[] = {
