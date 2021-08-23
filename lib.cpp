@@ -240,6 +240,10 @@ public:
         return Data(tensor.data_ptr(), tensor.nbytes());
     }
 
+    TensorWrapper* contiguous() {
+        return new TensorWrapper(tensor.contiguous());
+    }
+
 private:
     at::Tensor tensor;
 };
@@ -299,6 +303,15 @@ static int w_tensor_data(lua_State* L) {
     return 1;
 }
 
+static int w_tensor_contiguous(lua_State* L) {
+    TensorWrapper* self = luax_checktensor(L, 1);
+    TensorWrapper* newTensor = self->contiguous();
+    luax_pushtype(L, newTensor);
+    newTensor->release();
+
+    return 1;
+}
+
 struct luaL_Reg tensor_functions[] = {
     { "backward", w_tensor_backward },
     { "cuda", w_tensor_cuda },
@@ -306,6 +319,7 @@ struct luaL_Reg tensor_functions[] = {
     { "toDevice", w_tensor_toDevice },
     { "item", w_tensor_item },
     { "data", w_tensor_data },
+    { "contiguous", w_tensor_contiguous },
     { 0, 0 }
 };
 
