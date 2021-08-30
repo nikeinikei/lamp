@@ -14,8 +14,21 @@ enum class ObjectType {
     TENSOR,
 };
 
+static const char* typeAsString(ObjectType type) {
+    switch (type) {
+        case ObjectType::MODULE:
+            return "Module";
+        case ObjectType::TENSOR:
+            return "Tensor";
+        default:
+            return "unknown";
+    }
+}
+
 class Object {
 public:
+    virtual ~Object() = default;
+
     virtual const char* getName() = 0;
 
     virtual ObjectType getType() = 0;
@@ -67,17 +80,6 @@ static int w__gc(lua_State* L) {
     }
 
     return 0;
-}
-
-static const char* typeAsString(ObjectType type) {
-    switch (type) {
-        case ObjectType::MODULE:
-            return "Module";
-        case ObjectType::TENSOR:
-            return "Tensor";
-        default:
-            return "unknown";
-    }
 }
 
 static int w_type(lua_State* L) {
