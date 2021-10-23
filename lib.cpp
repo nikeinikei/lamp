@@ -9,6 +9,14 @@
 #include <memory>
 #include <string>
 
+#if defined(_MSC_VER)
+    #define LAMP_EXPORT __declspec(dllexport)
+#elif defined(__GNUC__)
+    #define LAMP_EXPORT __attribute__((visibility("default")))
+#else
+    #define LAMP_EXPORT
+#endif
+
 enum class ObjectType {
     MODULE,
     TENSOR,
@@ -34,19 +42,36 @@ public:
     virtual ObjectType getType() = 0;
 
     void retain() {
-        count.fetch_add(1, std::memory_order_relaxed);
+        ++count;
     }
 
     void release() {
-        if (count.fetch_sub(1, std::memory_order_release) == 1) {
-            std::atomic_thread_fence(std::memory_order_acquire);
+        if (--count) {
             delete this;
         }
     }
 
 private:
-    std::atomic<int> count = 1;
+    int count = 1;
 
+};
+
+struct Proxy {
+    Object* obj;
+    ObjectType type;
+};
+
+class LampException : public std::exception {
+public:
+    LampException(const char* msg)
+        : msg(msg) {}
+
+    virtual const char* what() const throw() {
+        return msg;
+    }
+
+private:
+    const char* msg;
 };
 
 template <typename T>
@@ -66,11 +91,6 @@ static void luax_catchexcept(lua_State* L, std::function<void()> closure) {
         luaL_error(L, e.what());
     }
 }
-
-struct Proxy {
-    Object* obj;
-    ObjectType type;
-};
 
 static int w__gc(lua_State* L) {
     Proxy* p = (Proxy*) lua_touserdata(L, 1);
@@ -188,7 +208,7 @@ public:
             tensor = torch::from_blob(copy, { width, height, numComponents }, charArrayDeleter, options);
         }
         else {
-            throw std::exception("unsupported format");
+            throw LampException("unsupported format");
         }
     }
 
@@ -234,7 +254,7 @@ public:
         try {
             tensor.backward();
         } catch(c10::Error& err) {
-            throw std::exception(err.what());
+            throw LampException(err.what());
         }
     }
 
@@ -327,19 +347,19 @@ struct luaL_Reg tensor_functions[] = {
 
 class ModuleWrapper : public Object {
 public:
-    constexpr static const char const* name = "lamp.Module";
+    constexpr static const char* name = "lamp.Module";
 
     ModuleWrapper(const char* path) {
         try {
             mod = torch::jit::load(path);
             std::vector<at::Tensor> parameters;
-            for (auto& param : mod.parameters()) {
+            for (const auto& param : mod.parameters()) {
                 parameters.push_back(param);
             }
             opt = std::make_unique<torch::optim::Adam>(parameters);
         }
         catch (c10::Error e) {
-            throw std::exception(e.what());
+            throw LampException(e.what());
         }
     }
 
@@ -373,7 +393,7 @@ public:
             }
         }
         catch (c10::Error err) {
-            throw std::exception(err.what());
+            throw LampException(err.what());
         }
     }
 
@@ -383,7 +403,7 @@ public:
 
     void step(double learningRate) {
         torch::NoGradGuard no_grad;
-        for (auto& param : mod.parameters()) {
+        for (const auto& param : mod.parameters()) {
             param.subtract_(param.grad(), learningRate);
         }
     }
@@ -532,7 +552,7 @@ struct luaL_Reg lamp_functions[] = {
     { 0, 0 }
 };
 
-extern "C" __declspec(dllexport) int luaopen_lamp(lua_State * L) {
+extern "C" LAMP_EXPORT int luaopen_lamp(lua_State * L) {
     luaL_register(L, "lamp", lamp_functions);
     luax_registertype(L, ModuleWrapper::name, module_functions);
     luax_registertype(L, TensorWrapper::name, tensor_functions);

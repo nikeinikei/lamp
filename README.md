@@ -5,21 +5,31 @@ It's kept in mind for the use with the [LÖVE](https://love2d.org/) engine to ex
 
 # How to build?
 
-These instructions are only valid for Windows. If you're on Linux or Mac you'll have to figure it out yourself.
+These instructions are valid for Windows and Linux.
 
 Prerequisites:
 - [Python](https://www.python.org/)
-- [Luajit](https://github.com/LuaJIT/LuaJIT) (compiled, after running the msvcbuild.bat file)
-- [PyTorch + LibTorch (C++ library, Release Version)](https://pytorch.org/get-started/locally/). Add `libtorch/lib` to your path, or include the dlls with your Lua script or LÖVE program.
+- [Luajit](https://github.com/LuaJIT/LuaJIT) (compiled, after running the msvcbuild.bat file on windows or running the `make` command under linux)
+- [PyTorch + LibTorch (C++ library, needs to be the release version under Windows)](https://pytorch.org/get-started/locally/). Add `libtorch/lib` to your path, or include the dlls with your Lua script or LÖVE program.
 - Depending on the chosen LibTorch version you may also have to install [CUDA](https://developer.nvidia.com/cuda-zone) and [cudnn](https://developer.nvidia.com/cudnn)
 
+Now from the root of this repository run the following commands under Windows
+
 ```bash
+mkdir build
 cd build
 cmake -G "Visual Studio 16 2019" -A x64 -DLUAJIT_PATH=/path/to/luajit -DCMAKE_PREFIX_PATH=/path/to/libtorch ..
 ```
 
-Now open the generated lamp.sln file and build it in Visual Studio.
-The compiled `lamp.dll` will be found in the `Release` folder.
+Or the following commands under Linux
+```bash
+mkdir build
+cd build
+cmake -DLUAJIT_PATH=/path/to/luajit -DCMAKE_PREFIX_PATH=/path/to/libtorch ..
+```
+
+Now open the generated lamp.sln file and build it in Visual Studio or build it using `make` under Linux.
+The compiled `lamp.dll` or `liblamp.so` will be found in the `Release` folder.
 
 # How to use?
 
